@@ -142,6 +142,64 @@ def crossover(u, u_t, CR):
             ut[j] = u_t[j]
     return ut
 
+### Funções ES
+
+def marriage(pais,p):
+    """
+    Escolhe os pais para o casamento
+    
+    Params:
+        - pais: população de pais
+        - p: numero de pais escolhidos para o casamento
+    return:
+        - pais_escolhidos: lista de pais escolhidos
+        - indices_pais: indices dos pais escolhidos
+    """
+    # indice dos pais
+    pais_ids = np.arange(0,len(pais))
+    # escolha p idices aleatorioamente
+    indices_pais = np.random.choice(pais_ids,size=p, replace=False)
+    # seleciona os p pais referentes aos indices
+    pais_escolhidos = [pais[i] for i in indices_pais]
+
+    return pais_escolhidos, indices_pais
+
+def recombination(pais):
+    """
+    Gera um filho a partir da recombinação de p pais
+
+    Params:
+        - pais: pais para serem recombinados
+
+    Return:
+        - filho: filho gerado a partir da recombinação
+    """
+    # cria um filho com 0 valores iguais à um pai
+    filho = np.zeros_like(pais[0])
+    p = len(pais)
+    for i in range(len(filho)):
+        # escolhe o pai
+        j = np.random.randint(0,high=p)
+        # escolhe a informação do pai que sera transmitida
+        k = np.random.randint(0,filho.shape[0])
+        # transmite a informação para o filho
+        filho[i] = pais[j][k]
+    return filho
+
+def mutation(filho, a):
+    """
+    Aplica a recombinação no filho
+
+    Params:
+        - filho: individuo a ser recombinado
+        - a: força aplicada na mutação (step size)
+    
+    return:
+        - filho_: filho mutado
+
+    """
+    filho_ = filho + np.random.normal(0, a, size=filho.shape[1])
+    return filho_
 
 
 ### Funções para carregamento das bases de dados
