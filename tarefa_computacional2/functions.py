@@ -1,3 +1,4 @@
+from matplotlib import markers
 import numpy as np
 import pandas as pd
 import neural_network as nn
@@ -6,6 +7,7 @@ from keras.models import Sequential
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
+import matplotlib.pyplot as plt
 import os
 
 def eval_individual(individual, net_layers, x_train, y_train, y_true, loss='bce', encoder=None):
@@ -67,7 +69,7 @@ def predict(x_train, layers, weights=None):
         A = layer.feedforward(A)
     return A
 
-def run_ga_experiments(model, n_tests, nn, exp_name="", args=[]):
+def run_ga_experiments(model, n_tests, nn, exp_name="", args=[], save=False):
     """
     Run GA experiments
     """
@@ -90,18 +92,22 @@ def run_ga_experiments(model, n_tests, nn, exp_name="", args=[]):
         acc_training.append(metrics[2])
         acc_valid.append(metrics[3])
 
-    try:
-        os.makedirs("results/{}".format(exp_name))
-    except:
-        pass
+    if save:
+        try:
+            os.makedirs("results/{}".format(exp_name))
+        except:
+            pass
+        # save metrics
+        np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
+        np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
+        np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
+        np.save("results/{}/accs_vali.npy".format(exp_name),np.array(acc_valid))
+    
+    return loss_training, loss_vali, acc_training, acc_valid
 
-    # save metrics
-    np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
-    np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
-    np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
-    np.save("results/{}/accs_vali.npy".format(exp_name),np.array(acc_valid))
 
-def run_pso_experiments(model, n_tests, nn, exp_name="", args=[], norm=False):
+
+def run_pso_experiments(model, n_tests, nn, exp_name="", args=[], norm=False, save=False):
     """
     Run PSO experiments   
     """    
@@ -122,19 +128,20 @@ def run_pso_experiments(model, n_tests, nn, exp_name="", args=[], norm=False):
 
         acc_training.append(metrics[2])
         acc_valid.append(metrics[3])
+    if save:
+        try:
+            os.makedirs("results/{}".format(exp_name))
+        except:
+            pass
 
-    try:
-        os.makedirs("results/{}".format(exp_name))
-    except:
-        pass
+        # save metrics
+        np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
+        np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
+        np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
+        np.save("results/{}/accs_vali.npy".format(exp_name),np.array(acc_valid))
+    return loss_training, loss_vali, acc_training, acc_valid
 
-    # save metrics
-    np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
-    np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
-    np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
-    np.save("results/{}/accs_vali.npy".format(exp_name),np.array(acc_valid))
-
-def initialize_population(layers,n, init='uniform'):
+def initialize_population(layers, n, init='uniform'):
     """
     Initialize population
     """
@@ -144,7 +151,7 @@ def initialize_population(layers,n, init='uniform'):
         for layer in layers:
             neurons, inputs =  layer.shpW
             if init=='uniform':
-                W = np.random.uniform(size=neurons*inputs).reshape(neurons, inputs)
+                W = np.random.uniform(low=-1.0, high=1.0, size=neurons*inputs).reshape(neurons, inputs)
             else:
                 W = np.random.randn(neurons, inputs)
             b = np.zeros((neurons, 1))
@@ -192,7 +199,7 @@ def get_samples(X, Y, test_size=0.15, norm=True):
 
     return X_train, y_hot_train, X_test, y_hot_test, encoder
 
-def run_nn_experiments(n, exp_name="", args=[]):
+def run_nn_experiments(n, exp_name="", args=[], save=False):
     """
     Run the baseline experiments
     """
@@ -221,14 +228,48 @@ def run_nn_experiments(n, exp_name="", args=[]):
         loss_vali.append(h.history['val_loss'])
         acc_training.append(h.history['accuracy'])
         acc_valid.append(h.history['val_accuracy'])
-        
-    try:
-        os.makedirs("results/{}".format(exp_name))
-    except:
-        pass    
+    
+    if save:        
+        try:
+            os.makedirs("results/{}".format(exp_name))
+        except:
+            pass    
 
-    # save metrics
-    np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
-    np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
-    np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
-    np.save("results/{}/accs_vali.npy".format(exp_name), np.array(acc_valid))
+        # save metrics
+        np.save("results/{}/losses_training.npy".format(exp_name), np.array(loss_training))
+        np.save("results/{}/losses_vali.npy".format(exp_name), np.array(loss_vali))
+        np.save("results/{}/accs_training.npy".format(exp_name), np.array(acc_training))
+        np.save("results/{}/accs_vali.npy".format(exp_name), np.array(acc_valid))
+    return loss_training, loss_vali, acc_training, acc_valid
+
+##### Plotting #####
+def plot_metric(vali, train, figname="", ylabel="",labels=['Validação', 'Treinamento'], savefig=False):
+    fig, ax = plt.subplots(figsize=(6,4))
+    x = np.arange(len(vali))
+    ax.plot(x, vali, label=labels[0])
+    ax.plot(x, train, label=labels[1])
+    ax.set_xlabel("Épocas")
+    ax.set_ylabel("{}".format(ylabel))
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    if savefig:
+        plt.savefig("figuras/{}.pdf".format(figname))
+    plt.clf()
+    plt.close()
+
+def plot_comparacao(dict_valores, size_valores=50, ylabel="", figname="", savefig=False):
+    fig, ax = plt.subplots(figsize=(5,3.5))
+    x = np.arange(size_valores)
+    ls = ['-', '-.', ':']
+    for i, k in enumerate(dict_valores):
+        ax.plot(x, dict_valores[k], label=k, ls=ls[i])
+    ax.set_xlabel("Épocas", fontdict={"fontsize":13})
+    ax.set_ylabel("{}".format(ylabel),fontdict={"fontsize":13})
+    plt.legend()
+    plt.tight_layout()
+    if savefig:
+        plt.savefig("figuras/{}.pdf".format(figname))
+    plt.show()
+    plt.clf()
+    plt.close()  
